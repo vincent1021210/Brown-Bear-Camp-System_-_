@@ -158,29 +158,6 @@ export function GmConsole() {
         stationId: station.id,
         status,
       });
-      // #region agent log
-      fetch("http://127.0.0.1:7908/ingest/2d491511-48b4-4493-8ed2-49380a7c93af", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "d92e6d",
-        },
-        body: JSON.stringify({
-          sessionId: "d92e6d",
-          hypothesisId: "D",
-          location: "GmConsole.tsx:submit",
-          message: "GM submit result",
-          data: {
-            teamId: team.id,
-            stationId: station.id,
-            status,
-            ok: data.ok,
-            reason: data.ok ? null : data.reason,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => undefined);
-      // #endregion
       if (!data.ok) {
         setMessage(data.reason ?? "送出失敗");
         return;
@@ -301,7 +278,7 @@ export function GmConsole() {
             ← 返回選擇身分
           </Link>
         </div>
-        <p className="text-xs tracking-[0.3em] text-[#9bb6d4]">任務完成判定・雨備</p>
+        <p className="text-xs tracking-[0.3em] text-[#9bb6d4]">任務完成判定</p>
         <h1 className="mt-2 font-display text-3xl font-bold text-[#f0c674]">關主畫面</h1>
         {station && (
           <p className="mt-2 text-sm text-[#d7e6f7]">
@@ -355,7 +332,7 @@ export function GmConsole() {
             <div className="flex gap-2">
               <input
                 className="flex-1 rounded-xl border border-[#f0c674]/40 bg-[#071428] px-3 py-2.5 text-sm text-white"
-                placeholder="例如 team-01"
+                placeholder="例如 黑 或 team-01"
                 value={manualTeamId}
                 onChange={(e) => setManualTeamId(e.target.value)}
               />

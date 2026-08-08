@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+.cursor/
+debug-*.log
 
 # debug
 npm-debug.log*
@@ -44,7 +46,5 @@ next-env.d.ts
 # local event database
 /data/db.json
 
-# clasp sync copy (source of truth is Code.gs)
+# clasp local cache only
 /google-apps-script/程式碼.js
-/google-apps-script/appsscript.json
-/google-apps-script/.claspignore

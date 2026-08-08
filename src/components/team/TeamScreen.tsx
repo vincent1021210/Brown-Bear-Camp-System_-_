@@ -86,7 +86,7 @@ export function TeamScreen({
   return (
     <div className="team-screen mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-12">
       <header className="mb-6 text-center">
-        <p className="text-xs tracking-[0.25em] text-[#9bb6d4]">{teamName}・雨備</p>
+        <p className="text-xs tracking-[0.25em] text-[#9bb6d4]">{teamName}</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-wide text-[#f0c674]">
           你的闖關進度
         </h1>

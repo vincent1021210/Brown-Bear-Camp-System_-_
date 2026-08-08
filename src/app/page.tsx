@@ -16,7 +16,7 @@ export default function HomePage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("identity");
   const [teams, setTeams] = useState<TeamItem[]>([]);
-  const [eventName, setEventName] = useState("棕熊營闖關活動（雨備）");
+  const [eventName, setEventName] = useState("棕熊營闖關活動");
 
   useEffect(() => {
     void listBootstrap()

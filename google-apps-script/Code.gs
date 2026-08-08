@@ -7,20 +7,22 @@
  * 部署後把網址貼到 Next.js 的 GAS_WEB_APP_URL
  */
 
-var EVENT_ID = 'event-brown-bear-2026';
-var EVENT_NAME = '棕熊營闖關活動（雨備）';
+var EVENT_ID = 'event-brown-bear-2026-main';
+var EVENT_NAME = '棕熊營闖關活動';
 
-/** 雨備關卡 */
+/** 正式關卡（非雨備） */
 var STATIONS = [
-  { id: 'station-1', order: 1, name: 'SDGs大富翁（秀佩）', shortName: 'SDGs大富翁', requiresTreasureCode: false },
-  { id: 'station-2', order: 2, name: '扭蛋尋寶+小隊練習（玉華）', shortName: '扭蛋尋寶', requiresTreasureCode: false },
-  { id: 'station-3', order: 3, name: '擰一擰水乾了（八導）', shortName: '擰一擰水乾了', requiresTreasureCode: false },
-  { id: 'station-4', order: 4, name: '彩虹泡泡棒（雅文）', shortName: '彩虹泡泡棒', requiresTreasureCode: false },
-  { id: 'station-5', order: 5, name: '汽球不倒翁（雅文／世勳・星宿海）', shortName: '汽球不倒翁', requiresTreasureCode: false },
-  { id: 'station-6', order: 6, name: '泡泡接力賽_聯結之鑰（雯薰）', shortName: '泡泡接力賽', requiresTreasureCode: false }
+  { id: 'station-1', order: 1, name: '龍門營地跳塔', shortName: '跳塔', requiresTreasureCode: false },
+  { id: 'station-2', order: 2, name: '血跡尋寶', shortName: '血跡尋寶', requiresTreasureCode: false },
+  { id: 'station-3', order: 3, name: '創意鑰匙圈手作', shortName: '鑰匙圈', requiresTreasureCode: false },
+  { id: 'station-4', order: 4, name: '神力布袋球積分賽', shortName: '布袋球', requiresTreasureCode: false },
+  { id: 'station-5', order: 5, name: '植物書籤', shortName: '植物書籤', requiresTreasureCode: false },
+  { id: 'station-6', order: 6, name: '蒙眼漫步', shortName: '蒙眼漫步', requiresTreasureCode: false },
+  { id: 'station-7', order: 7, name: '捲捲棒棒糖', shortName: '棒棒糖', requiresTreasureCode: false },
+  { id: 'station-8', order: 8, name: '快問快答', shortName: '快問快答', requiresTreasureCode: false }
 ];
 
-var EMBLEMS = ['龍', '虎', '鳳', '鷹', '狼', '熊', '鯊', '隼'];
+var EMBLEMS = ['黑', '灰', '藍', '紅', '棕', '黃'];
 
 function doGet(e) {
   return handleRequest(e, 'GET');
@@ -133,7 +135,7 @@ function ensureSpreadsheet_() {
     }
   }
 
-  var ss = SpreadsheetApp.create('棕熊營闖關進度資料庫');
+  var ss = SpreadsheetApp.create('棕熊營闖關進度資料庫（正式）');
   props.setProperty('SHEET_ID', ss.getId());
 
   var attempts = ss.getActiveSheet();
@@ -254,14 +256,28 @@ function lockStation_(stationId) {
   };
 }
 
+function resolveTeam_(query) {
+  var q = String(query || '').trim();
+  if (!q) return null;
+  var list = getTeams_();
+  var byId = list.filter(function (t) { return t.id === q; })[0];
+  if (byId) return byId;
+  var byEmblem = list.filter(function (t) { return t.emblem === q; })[0];
+  if (byEmblem) return byEmblem;
+  var byName = list.filter(function (t) {
+    return t.name === q || t.name === q + '小隊';
+  })[0];
+  return byName || null;
+}
+
 function checkInTeam_(teamId, stationId) {
-  var team = getTeams_().filter(function (t) { return t.id === teamId; })[0];
+  var team = resolveTeam_(teamId);
   var station = getStations_().filter(function (s) { return s.id === stationId; })[0];
   if (!team) return { ok: false, reason: '找不到小隊' };
   if (!station) return { ok: false, reason: '找不到關卡' };
 
   var state = getStationState_(readAttempts_(), team.eventId, team.id, station.id);
-  if (state === 'pass') {
+  if (state !== 'pending') {
     return {
       ok: true,
       canJudge: false,
@@ -286,7 +302,6 @@ function checkInTeam_(teamId, stationId) {
 function verifyTreasureCode_(stationId, code) {
   var station = getStations_().filter(function (s) { return s.id === stationId; })[0];
   if (!station) return { ok: false, reason: '找不到關卡' };
-  // 雨備關卡目前皆不需寶物 Code
   if (!station.requiresTreasureCode) return { ok: true };
   if (String(code).trim().toUpperCase() !== String(station.treasureCode || '').toUpperCase()) {
     return { ok: false, reason: '寶物 Code 不正確' };
@@ -303,7 +318,7 @@ function recordAttempt_(teamId, stationId, status, treasureCode) {
   if (!normalized) return { ok: false, reason: '狀態無效' };
 
   var current = getStationState_(readAttempts_(), team.eventId, team.id, station.id);
-  if (current === 'pass') return { ok: false, reason: '已完成，不重複計算' };
+  if (current !== 'pending') return { ok: false, reason: '已完成，不重複計算' };
 
   if (station.requiresTreasureCode && normalized === 'pass') {
     var verified = verifyTreasureCode_(station.id, treasureCode || '');

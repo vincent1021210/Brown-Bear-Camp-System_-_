@@ -6,7 +6,7 @@ import type {
   Team,
 } from "./types";
 
-const EVENT_ID = "event-brown-bear-2026";
+const EVENT_ID = "event-brown-bear-2026-main";
 
 function getGasUrl(): string {
   const url = process.env.GAS_WEB_APP_URL;

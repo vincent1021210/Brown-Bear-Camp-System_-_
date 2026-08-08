@@ -16,7 +16,7 @@ import type {
   TeamQrPayload,
 } from "./types";
 
-const STORAGE_KEY = "brown-bear-camp-db-v2-rain";
+const STORAGE_KEY = "brown-bear-camp-db-v1-main";
 
 function stations(): Station[] {
   return STATION_DEFS.map((def) => ({
@@ -119,71 +119,17 @@ async function resolveGasUrl(): Promise<string | null> {
   return null;
 }
 
-// #region agent log
-function debugLog(
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown> = {},
-) {
-  fetch("http://127.0.0.1:7908/ingest/2d491511-48b4-4493-8ed2-49380a7c93af", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "d92e6d",
-    },
-    body: JSON.stringify({
-      sessionId: "d92e6d",
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => undefined);
-}
-// #endregion
-
 async function gasGet<T>(
   action: string,
   query: Record<string, string> = {},
 ): Promise<T | null> {
   const base = await resolveGasUrl();
-  if (!base) {
-    // #region agent log
-    debugLog("A", "client-db.ts:gasGet", "no GAS url, local fallback", {
-      action,
-      query,
-    });
-    // #endregion
-    return null;
-  }
+  if (!base) return null;
   const url = new URL(base);
   url.searchParams.set("action", action);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
-  try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    const json = (await res.json()) as T;
-    // #region agent log
-    debugLog("B", "client-db.ts:gasGet", "GAS response", {
-      action,
-      query,
-      okHttp: res.ok,
-      status: res.status,
-      remoteKeys: json && typeof json === "object" ? Object.keys(json as object) : [],
-    });
-    // #endregion
-    return json;
-  } catch (err) {
-    // #region agent log
-    debugLog("B", "client-db.ts:gasGet", "GAS fetch failed", {
-      action,
-      query,
-      error: String(err),
-    });
-    // #endregion
-    throw err;
-  }
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  return (await res.json()) as T;
 }
 
 export async function listBootstrap() {
@@ -220,19 +166,7 @@ export async function getTeamProgress(teamId: string) {
     totalStations: number;
   }>("team", { teamId });
 
-  if (remote && !remote.error) {
-    // #region agent log
-    debugLog("C", "client-db.ts:getTeamProgress", "progress from GAS", {
-      teamId,
-      passCount: remote.passCount,
-      states: remote.progress?.map((p) => ({
-        stationId: p.stationId,
-        state: p.state,
-      })),
-    });
-    // #endregion
-    return remote;
-  }
+  if (remote && !remote.error) return remote;
 
   const team = teams().find((t) => t.id === teamId);
   if (!team) return null;
@@ -244,15 +178,6 @@ export async function getTeamProgress(teamId: string) {
     shortName: station.shortName,
     state: getStationState(db.attempts, team.eventId, team.id, station.id),
   }));
-  // #region agent log
-  debugLog("A", "client-db.ts:getTeamProgress", "progress from localStorage", {
-    teamId,
-    attemptCount: db.attempts.length,
-    storageKey: STORAGE_KEY,
-    states: progress.map((p) => ({ stationId: p.stationId, state: p.state })),
-    passCount: progress.filter((p) => p.state === "pass").length,
-  });
-  // #endregion
   return {
     event: { id: EVENT_ID, name: EVENT_NAME },
     team,
@@ -298,17 +223,32 @@ export async function lockStation(stationId: string) {
   };
 }
 
+function resolveTeam(query: string): Team | undefined {
+  const q = query.trim();
+  if (!q) return undefined;
+  const list = teams();
+  return (
+    list.find((t) => t.id === q) ||
+    list.find((t) => t.emblem === q) ||
+    list.find((t) => t.name === q || t.name === `${q}小隊`)
+  );
+}
+
 export async function checkInTeam(params: {
   teamId: string;
   stationId: string;
 }): Promise<CheckInResult | { ok: false; reason: string }> {
+  const localTeams = teams();
+  const resolved = resolveTeam(params.teamId);
+  const canonicalTeamId = resolved?.id ?? params.teamId.trim();
+
   const remote = await gasGet<CheckInResult | { ok: false; reason: string }>(
     "checkIn",
-    params,
+    { teamId: canonicalTeamId, stationId: params.stationId },
   );
   if (remote) return remote;
 
-  const team = teams().find((t) => t.id === params.teamId);
+  const team = resolved ?? localTeams.find((t) => t.id === canonicalTeamId);
   const station = stations().find((s) => s.id === params.stationId);
   if (!team) return { ok: false, reason: "找不到小隊" };
   if (!station) return { ok: false, reason: "找不到關卡" };
@@ -319,7 +259,7 @@ export async function checkInTeam(params: {
     team.id,
     station.id,
   );
-  if (state === "pass") {
+  if (state !== "pending") {
     return {
       ok: true,
       canJudge: false,
@@ -370,16 +310,6 @@ export async function recordAttempt(params: {
     treasureCode: params.treasureCode ?? "",
   });
   if (remote) {
-    // #region agent log
-    debugLog("B", "client-db.ts:recordAttempt", "complete via GAS", {
-      teamId: params.teamId,
-      stationId: params.stationId,
-      status: params.status,
-      ok: remote.ok,
-      reason: remote.reason ?? null,
-      attemptStatus: remote.attempt?.status ?? null,
-    });
-    // #endregion
     if (!remote.ok || !remote.attempt) {
       return { ok: false, reason: remote.reason ?? "紀錄失敗" };
     }
@@ -397,7 +327,7 @@ export async function recordAttempt(params: {
     team.id,
     station.id,
   );
-  if (current === "pass") return { ok: false, reason: "已完成，不重複計算" };
+  if (current !== "pending") return { ok: false, reason: "已完成，不重複計算" };
 
   const attempt: Attempt = {
     id: crypto.randomUUID(),
@@ -409,15 +339,6 @@ export async function recordAttempt(params: {
   };
   db.attempts.push(attempt);
   writeDb(db);
-  // #region agent log
-  debugLog("A", "client-db.ts:recordAttempt", "complete via localStorage", {
-    teamId: team.id,
-    stationId: station.id,
-    status: params.status,
-    attemptCount: db.attempts.length,
-    storageKey: STORAGE_KEY,
-  });
-  // #endregion
   return { ok: true, attempt };
 }
 

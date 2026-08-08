@@ -53,30 +53,6 @@ export function TeamProgressClient({ teamId }: { teamId: string }) {
           setError("找不到小隊");
           return;
         }
-        // #region agent log
-        fetch("http://127.0.0.1:7908/ingest/2d491511-48b4-4493-8ed2-49380a7c93af", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "d92e6d",
-          },
-          body: JSON.stringify({
-            sessionId: "d92e6d",
-            hypothesisId: "C",
-            location: "TeamProgressClient.tsx:load",
-            message: "team UI received progress",
-            data: {
-              teamId,
-              passCount: json.passCount,
-              states: json.progress?.map((p) => ({
-                stationId: p.stationId,
-                state: p.state,
-              })),
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => undefined);
-        // #endregion
         setData(json);
         setError(null);
       } catch {
