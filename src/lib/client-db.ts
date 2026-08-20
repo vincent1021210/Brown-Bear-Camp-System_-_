@@ -188,6 +188,75 @@ export async function getTeamProgress(teamId: string) {
   };
 }
 
+export interface BoardRow {
+  team: Team;
+  progress: Array<{
+    stationId: string;
+    order: number;
+    name: string;
+    shortName: string;
+    state: StationPlayState;
+  }>;
+  passCount: number;
+  judgedCount: number;
+  totalStations: number;
+  passRate: number;
+  rank: number;
+}
+
+export interface BoardData {
+  event: { id: string; name: string };
+  stations: Station[];
+  updatedAt: string;
+  rows: BoardRow[];
+}
+
+export async function listBoardProgress(): Promise<BoardData> {
+  const remote = await gasGet<BoardData>("board");
+  if (remote?.rows?.length) return remote;
+
+  const stationList = stations();
+  const db = readDb();
+  const rows: BoardRow[] = teams().map((team) => {
+    const progress = stationList.map((station) => ({
+      stationId: station.id,
+      order: station.order,
+      name: station.name,
+      shortName: station.shortName,
+      state: getStationState(db.attempts, team.eventId, team.id, station.id),
+    }));
+    const passCount = progress.filter((p) => p.state === "pass").length;
+    const judgedCount = progress.filter((p) => p.state !== "pending").length;
+    return {
+      team,
+      progress,
+      passCount,
+      judgedCount,
+      totalStations: stationList.length,
+      passRate: stationList.length
+        ? Math.round((passCount / stationList.length) * 100)
+        : 0,
+      rank: 0,
+    };
+  });
+
+  rows.sort((a, b) => {
+    if (b.passCount !== a.passCount) return b.passCount - a.passCount;
+    if (b.judgedCount !== a.judgedCount) return b.judgedCount - a.judgedCount;
+    return a.team.id.localeCompare(b.team.id);
+  });
+  rows.forEach((row, index) => {
+    row.rank = index + 1;
+  });
+
+  return {
+    event: { id: EVENT_ID, name: EVENT_NAME },
+    stations: stationList,
+    updatedAt: new Date().toISOString(),
+    rows,
+  };
+}
+
 export function parseTeamQr(raw: string): TeamQrPayload | null {
   try {
     const data = JSON.parse(raw) as TeamQrPayload;

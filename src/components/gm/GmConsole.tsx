@@ -269,13 +269,19 @@ export function GmConsole() {
   return (
     <div className="gm-screen mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 py-6">
       <header className="mb-6 text-center">
-        <div className="mb-3 flex justify-start">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <Link
             href="/"
             onClick={clearGmSession}
             className="text-sm text-[#9bb6d4]"
           >
             ← 返回選擇身分
+          </Link>
+          <Link
+            href="/gm/board/"
+            className="rounded-full border border-[#f0c674]/45 px-3 py-1.5 text-sm text-[#f0c674] transition hover:border-[#f0c674] hover:bg-[#f0c674]/10"
+          >
+            每小隊統計圖
           </Link>
         </div>
         <p className="text-xs tracking-[0.3em] text-[#9bb6d4]">任務完成判定</p>

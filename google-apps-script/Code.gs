@@ -60,6 +60,9 @@ function handleRequest(e, method) {
       if (!progress) return json_({ error: '找不到小隊' }, 404);
       return json_(progress);
     }
+    if (action === 'board') {
+      return json_(listBoard_());
+    }
     if (action === 'lock') {
       return json_(lockStation_(stationId));
     }
@@ -82,7 +85,7 @@ function handleRequest(e, method) {
     return json_({
       ok: true,
       service: 'Brown Bear Camp System',
-      hint: 'Use action=bootstrap|team|lock|checkIn|treasure|complete|undo|reset'
+      hint: 'Use action=bootstrap|team|board|lock|checkIn|treasure|complete|undo|reset'
     });
   } catch (err) {
     return json_({ ok: false, error: String(err) }, 500);
@@ -212,6 +215,49 @@ function listBootstrap_() {
     teams: getTeams_(),
     stations: getStations_(),
     gameMasters: getGameMasters_()
+  };
+}
+
+function listBoard_() {
+  var stations = getStations_();
+  var attempts = readAttempts_();
+  var rows = getTeams_().map(function (team) {
+    var progress = stations.map(function (station) {
+      return {
+        stationId: station.id,
+        order: station.order,
+        name: station.name,
+        shortName: station.shortName,
+        state: getStationState_(attempts, team.eventId, team.id, station.id)
+      };
+    });
+    var passCount = progress.filter(function (p) { return p.state === 'pass'; }).length;
+    var judgedCount = progress.filter(function (p) { return p.state !== 'pending'; }).length;
+    return {
+      team: team,
+      progress: progress,
+      passCount: passCount,
+      judgedCount: judgedCount,
+      totalStations: stations.length,
+      passRate: stations.length ? Math.round((passCount / stations.length) * 100) : 0
+    };
+  });
+
+  rows.sort(function (a, b) {
+    if (b.passCount !== a.passCount) return b.passCount - a.passCount;
+    if (b.judgedCount !== a.judgedCount) return b.judgedCount - a.judgedCount;
+    return a.team.id.localeCompare(b.team.id);
+  });
+
+  rows.forEach(function (row, index) {
+    row.rank = index + 1;
+  });
+
+  return {
+    event: { id: EVENT_ID, name: EVENT_NAME },
+    stations: stations,
+    updatedAt: new Date().toISOString(),
+    rows: rows
   };
 }
 
