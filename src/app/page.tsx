@@ -39,6 +39,11 @@ export default function HomePage() {
     router.push("/gm");
   }
 
+  function chooseBoard() {
+    sessionStorage.setItem("role", "board");
+    router.push("/gm/board/");
+  }
+
   return (
     <div className="home-screen mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 py-10">
       <header className="mb-8 text-center">
@@ -78,6 +83,18 @@ export default function HomePage() {
             <h3 className="mt-2 text-3xl font-bold text-[#f0c674]">關主</h3>
             <p className="mt-3 text-sm leading-relaxed text-[#b8cce0]">
               鎖定關卡、掃描 QR、判定通過／不通過
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={chooseBoard}
+            className="rounded-3xl border-2 border-[#f0c674]/55 bg-[#0d2244]/80 p-7 text-left transition hover:border-[#f0c674] hover:bg-[#12315a] active:scale-[0.99]"
+          >
+            <p className="text-xs tracking-[0.3em] text-[#9bb6d4]">PROGRESS</p>
+            <h3 className="mt-2 text-3xl font-bold text-[#f0c674]">進度</h3>
+            <p className="mt-3 text-sm leading-relaxed text-[#b8cce0]">
+              查看每小隊闖關統計圖（免密碼）
             </p>
           </button>
         </section>
